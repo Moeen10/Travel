@@ -1,53 +1,86 @@
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "firebase/auth";
 import { useState, useEffect } from 'react';
 import initializeAuthentication from './../Pages/Login/Firebase/firebase.init';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+
 
 initializeAuthentication();
 
 const useFirebase = () => {
-    const [user, setUser] = useState({});
-    const [isLoading, setIsLoading] = useState(true);
+    const [user, setUser] = useState({})
+    const [error, setError] = useState('')
+    const [isLoading, setIsLoading] = useState(true)
 
     const auth = getAuth();
+    const googleProvider = new GoogleAuthProvider();
 
-    const signInUsingGoogle = () => {
+    /* ======= Sing in by Google=====  */
+    const singInUsingGoogle = () => {
         setIsLoading(true);
-        const googleProvider = new GoogleAuthProvider();
-
-        signInWithPopup(auth, googleProvider)
-            .then(result => {
-                setUser(result.user);
-            })
-            .finally(() => setIsLoading(false));
+        return signInWithPopup(auth, googleProvider)
+            .finally(() => setIsLoading(false))
     }
 
-    // observe user state change
+    /* ======= Sing up by password =====  */
+    const signUpUsingPassword = (email, password) => {
+        setIsLoading(true);
+        if (password.length < 6) {
+            setError("Password should be at least 6 Characters")
+            return;
+        }
+        createUserWithEmailAndPassword(auth, email, password)
+            .then(result => {
+                console.log(result.user)
+                setError('')
+            })
+            .catch(error => {
+                setError(error.message)
+            }).finally(() => setIsLoading(false))
+    }
+
+    /* ======= Sing in by password =====  */
+    const signInUsingPassword = (email, password) => {
+        return signInWithEmailAndPassword(auth, email, password)
+            .then(result => {
+                const user = result.user;
+                console.log(user)
+
+            })
+            .catch((error) => {
+                setError(error.message)
+            });
+    }
+
+    /* ======= state tracker =====  */
     useEffect(() => {
-        const unsubscribed = onAuthStateChanged(auth, user => {
+        onAuthStateChanged(auth, (user) => {
             if (user) {
-                setUser(user);
+                setUser(user)
             }
             else {
                 setUser({})
             }
-            setIsLoading(false);
+            setIsLoading(false)
         });
-        return () => unsubscribed;
     }, [])
 
+
+    /* ======= Sing out=====  */
     const logOut = () => {
-        setIsLoading(true);
+        setIsLoading(true)
         signOut(auth)
             .then(() => { })
             .finally(() => setIsLoading(false));
     }
 
-    return {
-        user,
-        isLoading,
-        signInUsingGoogle,
-        logOut
-    }
+
+    return { isLoading,
+         error, 
+         
+         user, 
+         signUpUsingPassword, 
+         signInUsingPassword, 
+         singInUsingGoogle,
+          logOut }
 }
 
 export default useFirebase;
